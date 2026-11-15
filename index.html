@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- HTML2Canvas untuk Cetak Tiket -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script>
@@ -35,7 +36,7 @@
 </head>
 <body class="text-gray-800 pb-20 md:pb-0">
 
-  <!-- PWA & MANIFEST SETUP (MENGGUNAKAN IKON PUBLIK GRATIS) -->
+  <!-- PWA & MANIFEST SETUP -->
   <script>
     const manifestJSON = {
       "name": "Liga Grand Permata", "short_name": "LGP", "start_url": ".", "display": "standalone",
@@ -196,9 +197,9 @@
           <p class="text-xs text-gray-500">Masuk sebagai Peserta atau Admin</p>
         </div>
         <div id="demoLoginHint" class="hidden text-xs bg-blue-50 text-blue-800 p-2 rounded mb-4 border border-blue-200 text-center">
-          <b>Demo Mode:</b><br>Admin: admin@lgp.com / 12345<br>User: P01 / 12345
+          <b>Demo Mode:</b><br>Admin: admin / mamih-alam<br>User: P01 / 123
         </div>
-        <input type="text" id="loginUser" class="w-full p-3 border border-gray-300 rounded mb-3" placeholder="ID Peserta (P01) / Email Admin">
+        <input type="text" id="loginUser" class="w-full p-3 border border-gray-300 rounded mb-3" placeholder="Ketik 'admin' atau ID Peserta (P01)">
         <input type="password" id="loginPass" class="w-full p-3 border border-gray-300 rounded mb-6" placeholder="Password">
         <button onclick="handleLogin()" class="w-full bg-navy text-gold font-bold py-3 rounded-lg shadow hover:bg-opacity-90 transition">LOGIN</button>
       </div>
@@ -295,11 +296,13 @@
         <section id="mod-pemain" class="hidden animate-fade-in">
           <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
             <h2 class="text-2xl font-bold text-navy">Daftar Pemain</h2>
-            <div id="adminTools" class="hidden gap-2">
-               <button id="btnInitDb" onclick="initProdDatabase()" class="hidden bg-red-600 text-white font-bold px-4 py-2 rounded shadow hover:bg-red-700 text-sm"><i class="fas fa-database mr-1"></i> Init DB</button>
-               <button onclick="randomizePlayers()" class="bg-gold text-navy font-bold px-4 py-2 rounded shadow hover:bg-yellow-500 text-sm"><i class="fas fa-random mr-1"></i> Acak Pemain</button>
+            <div id="adminTools" class="hidden gap-2 flex-wrap">
+               <button id="btnInitDb" onclick="initProdDatabase()" class="hidden bg-red-600 text-white font-bold px-3 py-2 rounded shadow hover:bg-red-700 text-sm"><i class="fas fa-database mr-1"></i> Init DB</button>
+               <button onclick="randomizePlayers()" class="bg-gold text-navy font-bold px-3 py-2 rounded shadow hover:bg-yellow-500 text-sm"><i class="fas fa-random mr-1"></i> Acak Pemain</button>
+               <button onclick="saveAllPlayers()" class="bg-navy text-gold font-bold px-3 py-2 rounded shadow hover:bg-blue-900 text-sm"><i class="fas fa-save mr-1"></i> Simpan Nama</button>
             </div>
           </div>
+          <p class="text-xs text-gray-600 mb-4">Admin dapat langsung mengetik untuk mengubah nama asli peserta pada kolom di bawah ini.</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="gridPemain"></div>
         </section>
 
@@ -335,13 +338,11 @@
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, getDocs, doc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-    let app, db, auth;
+    let app, db;
     if (!IS_PREVIEW) {
       app = initializeApp(firebaseConfig);
       db = getFirestore(app);
-      auth = getAuth(app);
     }
 
     let currentUser = null;
@@ -461,8 +462,11 @@
       }
     };
 
+    // ==========================================
+    // LOGIKA LOGIN (ADMIN CUKUP KETIK "admin")
+    // ==========================================
     window.handleLogin = async () => {
-      const user = document.getElementById('loginUser').value.trim();
+      const user = document.getElementById('loginUser').value.trim().toLowerCase();
       const pass = document.getElementById('loginPass').value.trim();
       if(!user || !pass) return showModal('Error', 'Isi username dan password!');
 
@@ -471,38 +475,51 @@
       if (IS_PREVIEW) {
         setTimeout(() => {
           hideLoader();
-          if(user === 'admin@lgp.com' && pass === '12345') proceedLogin('Admin', 'Panitia');
-          else if(user === 'P01' && pass === '12345') proceedLogin('Peserta', 'P01');
+          if(user === 'admin' && pass === 'mamih-alam') proceedLogin('Admin', 'Panitia');
+          else if(user === 'p01' && pass === '123') proceedLogin('Peserta', 'P01');
           else showModal('Gagal', 'Username/Password salah!');
         }, 800);
       } else {
-        if(user.includes('@')) {
+        if(user === 'admin') {
           try {
-            await signInWithEmailAndPassword(auth, user, pass);
-            hideLoader();
-          } catch(e) { hideLoader(); showModal('Gagal', 'Email Admin atau Password salah!'); }
+            const adminDoc = await getDocs(collection(db, "config_admin"));
+            let adminPass = "mamih-alam";
+            adminDoc.forEach(d => { if(d.id === 'admin') adminPass = d.data().password; });
+            
+            if(pass === adminPass) {
+              hideLoader();
+              proceedLogin('Admin', 'Administrator');
+            } else {
+              hideLoader();
+              showModal('Gagal', 'Password Admin salah! (Default: mamih-alam)');
+            }
+          } catch(e) {
+            if(pass === "mamih-alam") {
+              hideLoader();
+              proceedLogin('Admin', 'Administrator');
+            } else {
+              hideLoader();
+              showModal('Gagal', 'Password salah!');
+            }
+          }
         } else {
           try {
             const snap = await getDocs(collection(db, "pemain"));
             let found = false;
+            let foundId = '';
             snap.forEach(d => {
-              if(d.id === user.toUpperCase() && d.data().password === pass) {
+              if(d.id.toLowerCase() === user && d.data().password === pass) {
                 found = true;
-                proceedLogin('Peserta', d.id);
+                foundId = d.id;
               }
             });
             hideLoader();
-            if(!found) showModal('Gagal', 'ID Pemain atau Password salah!');
+            if(found) proceedLogin('Peserta', foundId);
+            else showModal('Gagal', 'ID Pemain atau Password salah!');
           } catch(e) { hideLoader(); showModal('Error', 'Gagal memuat data'); }
         }
       }
     };
-
-    if(!IS_PREVIEW) {
-      onAuthStateChanged(auth, (user) => {
-        if(user) proceedLogin('Admin', user.email);
-      });
-    }
 
     function proceedLogin(role, identifier) {
       currentUser = { role, username: identifier };
@@ -521,7 +538,6 @@
 
     window.handleLogout = () => {
       currentUser = null;
-      if(!IS_PREVIEW && auth.currentUser) signOut(auth);
       document.getElementById('view-app').classList.add('hidden');
       document.getElementById('view-landing').classList.remove('hidden');
       document.getElementById('loginUser').value = ''; document.getElementById('loginPass').value = '';
@@ -569,22 +585,93 @@
 
     const getName = (id) => { const p = globalPemain.find(x => x.id === id); return p ? p.nama_asli : id; };
 
+    // ==========================================
+    // RENDER & EDIT PEMAIN MANUAL OLEH ADMIN
+    // ==========================================
     function renderPemain() {
       const g = document.getElementById('gridPemain');
       g.innerHTML = '';
       if(globalPemain.length === 0) return;
+
+      const isAdmin = currentUser && currentUser.role === 'Admin';
 
       globalPemain.forEach(p => {
         let isClaimed = p.sudah_diklaim;
         g.innerHTML += `
           <div class="flex items-center gap-2 border p-3 rounded-lg bg-white shadow-sm">
             <span class="font-bold text-navy w-10">${p.id}</span>
-            <div class="flex-1 truncate font-semibold ${isClaimed ? 'text-gray-800' : 'text-gray-400 italic'}">${p.nama_asli}</div>
+            <input type="text" id="pname-${p.id}" value="${p.nama_asli}" ${isAdmin ? '' : 'readonly'} 
+                   class="flex-1 border border-gray-300 rounded p-1.5 text-sm ${isAdmin ? 'bg-white focus:ring-2 focus:ring-navy' : 'bg-transparent border-none font-semibold'}">
             <i class="fas ${isClaimed ? 'fa-user-check text-green-500' : 'fa-user-clock text-gray-300'}"></i>
           </div>
         `;
       });
     }
+
+    window.saveAllPlayers = async () => {
+      let ok = await showModal('Simpan Perubahan', 'Simpan nama-nama pemain yang telah diedit?', true);
+      if(!ok) return;
+
+      showLoader("MENYIMPAN NAMA...");
+      if(IS_PREVIEW) {
+        setTimeout(() => {
+          globalPemain.forEach(p => {
+            let inputVal = document.getElementById(`pname-${p.id}`).value;
+            if(inputVal) p.nama_asli = inputVal;
+          });
+          renderAll(); hideLoader();
+          showModal('Berhasil', 'Nama pemain berhasil disimpan!');
+        }, 500);
+      } else {
+        try {
+          const batch = writeBatch(db);
+          globalPemain.forEach(p => {
+            let inputVal = document.getElementById(`pname-${p.id}`).value;
+            if(inputVal) {
+              p.nama_asli = inputVal;
+              batch.update(doc(db, "pemain", p.id), { nama_asli: inputVal });
+            }
+          });
+          await batch.commit();
+          await loadData();
+          hideLoader();
+          showModal('Berhasil', 'Semua perubahan nama pemain tersimpan ke database!');
+        } catch(e) {
+          hideLoader();
+          showModal('Error', 'Gagal menyimpan nama pemain.');
+        }
+      }
+    };
+
+    window.randomizePlayers = async () => {
+      let ok = await showModal('Acak Pemain', 'PERINGATAN: Ini akan mengacak seluruh posisi nama pemain ke dalam jadwal secara random. Lanjutkan?', true);
+      if(!ok) return;
+
+      showLoader("MENGACAK POSISI...");
+      if(IS_PREVIEW) {
+        setTimeout(() => {
+          let names = globalPemain.map(p => p.nama_asli).sort(() => Math.random() - 0.5);
+          globalPemain.forEach((p, idx) => p.nama_asli = names[idx]);
+          renderAll(); hideLoader();
+        }, 500);
+      } else {
+        try {
+          let names = globalPemain.map(p => p.nama_asli).sort(() => Math.random() - 0.5);
+          const batch = writeBatch(db);
+          globalPemain.forEach((p, idx) => {
+            p.nama_asli = names[idx];
+            batch.update(doc(db, "pemain", p.id), { nama_asli: names[idx] });
+          });
+          await batch.commit();
+          await loadData();
+          hideLoader();
+          showModal('Berhasil', 'Posisi pemain berhasil diacak!');
+        } catch(e) {
+          hideLoader();
+          showModal('Error', 'Gagal mengacak pemain.');
+        }
+      }
+    };
 
     function renderJadwal() {
       const tb = document.getElementById('tblJadwal');
@@ -693,6 +780,8 @@
           let id = 'P'+String(i).padStart(2,'0');
           batch.set(doc(db, "pemain", id), { nama_asli: `Pemain ${String(i).padStart(2,'0')}`, password: '', sudah_diklaim: false });
         }
+        batch.set(doc(db, "config_admin", "admin"), { password: "mamih-alam" });
+
         const jd = [
           ['M01',1,'P18','P13','P04','P20'],['M02',1,'P01','P21','P19','P08'],['M03',1,'P23','P03','P12','P24'],
           ['M04',1,'P17','P16','P06','P02'],['M05',1,'P10','P09','P22','P07'],['M06',1,'P05','P14','P15','P11'],
