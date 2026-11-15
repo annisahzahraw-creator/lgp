@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- HTML2Canvas untuk Cetak Tiket -->
-  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script>
@@ -136,10 +135,6 @@
   <!-- LANDING PAGE & LOGIN -->
   <div id="view-landing" class="min-h-screen bg-navy flex flex-col relative">
     
-    <div id="previewBanner" class="hidden bg-red-600 text-white text-center py-1 text-xs font-bold tracking-widest">
-      MODE UJI COBA (DATA DUMMY) - TIDAK TERSAMBUNG KE FIREBASE
-    </div>
-
     <!-- Header -->
     <header class="glass-navy p-4 flex justify-between items-center sticky top-0 z-40">
       <div class="text-gold font-bold text-xl"><i class="fas fa-trophy mr-2"></i> LGP 2026</div>
@@ -195,9 +190,6 @@
         <div class="text-center mt-6 mb-6">
           <h2 class="text-2xl font-bold text-navy">Login LGP</h2>
           <p class="text-xs text-gray-500">Masuk sebagai Peserta atau Admin</p>
-        </div>
-        <div id="demoLoginHint" class="hidden text-xs bg-blue-50 text-blue-800 p-2 rounded mb-4 border border-blue-200 text-center">
-          <b>Demo Mode:</b><br>Admin: admin / mamih-alam<br>User: P01 / 123
         </div>
         <input type="text" id="loginUser" class="w-full p-3 border border-gray-300 rounded mb-3" placeholder="Ketik 'admin' atau ID Peserta (P01)">
         <input type="password" id="loginPass" class="w-full p-3 border border-gray-300 rounded mb-6" placeholder="Password">
@@ -297,12 +289,12 @@
           <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
             <h2 class="text-2xl font-bold text-navy">Daftar Pemain</h2>
             <div id="adminTools" class="hidden gap-2 flex-wrap">
-               <button id="btnInitDb" onclick="initProdDatabase()" class="hidden bg-red-600 text-white font-bold px-3 py-2 rounded shadow hover:bg-red-700 text-sm"><i class="fas fa-database mr-1"></i> Init DB</button>
+               <button onclick="initProdDatabase()" class="bg-red-600 text-white font-bold px-3 py-2 rounded shadow hover:bg-red-700 text-sm"><i class="fas fa-redo mr-1"></i> Reset DB</button>
                <button onclick="randomizePlayers()" class="bg-gold text-navy font-bold px-3 py-2 rounded shadow hover:bg-yellow-500 text-sm"><i class="fas fa-random mr-1"></i> Acak Pemain</button>
                <button onclick="saveAllPlayers()" class="bg-navy text-gold font-bold px-3 py-2 rounded shadow hover:bg-blue-900 text-sm"><i class="fas fa-save mr-1"></i> Simpan Nama</button>
             </div>
           </div>
-          <p class="text-xs text-gray-600 mb-4">Admin dapat langsung mengetik untuk mengubah nama asli peserta pada kolom di bawah ini.</p>
+          <p class="text-xs text-gray-600 mb-4">Kosongkan kotak nama untuk menghapus/mereset peserta. Klik "Simpan Nama" setelah selesai.</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="gridPemain"></div>
         </section>
 
@@ -348,19 +340,6 @@
     let currentUser = null;
     let globalPemain = [];
     let globalJadwal = [];
-
-    let dummyPemain = [], dummyJadwal = [];
-    if (IS_PREVIEW) {
-      document.getElementById('previewBanner').classList.remove('hidden');
-      document.getElementById('demoLoginHint').classList.remove('hidden');
-      dummyPemain = [
-        { id: 'P01', nama_asli: 'Budi (Dummy)', password: '123', sudah_diklaim: true },
-        { id: 'P02', nama_asli: 'Pemain 02', password: '', sudah_diklaim: false }
-      ];
-      dummyJadwal = [
-        { id: 'M01', putaran: 1, a1: 'P01', a2: 'P02', b1: 'P03', b2: 'P04', ag1: '', bg1: '', ag2: '', bg2: '' }
-      ];
-    }
 
     window.showLoader = (text = "MEMPROSES...") => { 
       document.getElementById('loaderText').innerText = text;
@@ -431,40 +410,25 @@
       
       showLoader("MENGACAK SLOT...");
       
-      if (IS_PREVIEW) {
-        setTimeout(() => {
-          let avail = dummyPemain.filter(p => !p.sudah_diklaim);
-          hideLoader();
-          if(avail.length === 0) return showModal('Maaf', 'Semua 24 slot telah penuh terisi!');
-          let slot = avail[Math.floor(Math.random() * avail.length)];
-          slot.sudah_diklaim = true; slot.nama_asli = name; slot.password = pass;
-          document.getElementById('regName').value = ''; document.getElementById('regPass').value = '';
-          showTicket(name, slot.id, pass);
-        }, 1000);
-      } else {
-        try {
-          const snap = await getDocs(collection(db, "pemain"));
-          let avail = [];
-          snap.forEach(d => { if(!d.data().sudah_diklaim) avail.push({id: d.id, ...d.data()}) });
-          if(avail.length === 0) { hideLoader(); return showModal('Maaf', 'Semua 24 slot penuh!'); }
-          
-          let slot = avail[Math.floor(Math.random() * avail.length)];
-          await updateDoc(doc(db, "pemain", slot.id), {
-            nama_asli: name, password: pass, sudah_diklaim: true
-          });
-          
-          hideLoader();
-          document.getElementById('regName').value = ''; document.getElementById('regPass').value = '';
-          showTicket(name, slot.id, pass);
-        } catch (e) {
-          hideLoader(); showModal('Error', 'Gagal mendaftar. Pastikan koneksi stabil.');
-        }
+      try {
+        const snap = await getDocs(collection(db, "pemain"));
+        let avail = [];
+        snap.forEach(d => { if(!d.data().sudah_diklaim) avail.push({id: d.id, ...d.data()}) });
+        if(avail.length === 0) { hideLoader(); return showModal('Maaf', 'Semua 24 slot penuh!'); }
+        
+        let slot = avail[Math.floor(Math.random() * avail.length)];
+        await updateDoc(doc(db, "pemain", slot.id), {
+          nama_asli: name, password: pass, sudah_diklaim: true
+        });
+        
+        hideLoader();
+        document.getElementById('regName').value = ''; document.getElementById('regPass').value = '';
+        showTicket(name, slot.id, pass);
+      } catch (e) {
+        hideLoader(); showModal('Error', 'Gagal mendaftar. Pastikan koneksi stabil.');
       }
     };
 
-    // ==========================================
-    // LOGIKA LOGIN (ADMIN CUKUP KETIK "admin")
-    // ==========================================
     window.handleLogin = async () => {
       const user = document.getElementById('loginUser').value.trim().toLowerCase();
       const pass = document.getElementById('loginPass').value.trim();
@@ -472,52 +436,43 @@
 
       showLoader("LOGIN...");
 
-      if (IS_PREVIEW) {
-        setTimeout(() => {
-          hideLoader();
-          if(user === 'admin' && pass === 'mamih-alam') proceedLogin('Admin', 'Panitia');
-          else if(user === 'p01' && pass === '123') proceedLogin('Peserta', 'P01');
-          else showModal('Gagal', 'Username/Password salah!');
-        }, 800);
-      } else {
-        if(user === 'admin') {
-          try {
-            const adminDoc = await getDocs(collection(db, "config_admin"));
-            let adminPass = "mamih-alam";
-            adminDoc.forEach(d => { if(d.id === 'admin') adminPass = d.data().password; });
-            
-            if(pass === adminPass) {
-              hideLoader();
-              proceedLogin('Admin', 'Administrator');
-            } else {
-              hideLoader();
-              showModal('Gagal', 'Password Admin salah! (Default: mamih-alam)');
-            }
-          } catch(e) {
-            if(pass === "mamih-alam") {
-              hideLoader();
-              proceedLogin('Admin', 'Administrator');
-            } else {
-              hideLoader();
-              showModal('Gagal', 'Password salah!');
-            }
-          }
-        } else {
-          try {
-            const snap = await getDocs(collection(db, "pemain"));
-            let found = false;
-            let foundId = '';
-            snap.forEach(d => {
-              if(d.id.toLowerCase() === user && d.data().password === pass) {
-                found = true;
-                foundId = d.id;
-              }
-            });
+      if(user === 'admin') {
+        try {
+          const adminDoc = await getDocs(collection(db, "config_admin"));
+          let adminPass = "mamih-alam";
+          adminDoc.forEach(d => { if(d.id === 'admin') adminPass = d.data().password; });
+          
+          if(pass === adminPass) {
             hideLoader();
-            if(found) proceedLogin('Peserta', foundId);
-            else showModal('Gagal', 'ID Pemain atau Password salah!');
-          } catch(e) { hideLoader(); showModal('Error', 'Gagal memuat data'); }
+            proceedLogin('Admin', 'Administrator');
+          } else {
+            hideLoader();
+            showModal('Gagal', 'Password Admin salah! (Default: mamih-alam)');
+          }
+        } catch(e) {
+          if(pass === "mamih-alam") {
+            hideLoader();
+            proceedLogin('Admin', 'Administrator');
+          } else {
+            hideLoader();
+            showModal('Gagal', 'Password salah!');
+          }
         }
+      } else {
+        try {
+          const snap = await getDocs(collection(db, "pemain"));
+          let found = false;
+          let foundId = '';
+          snap.forEach(d => {
+            if(d.id.toLowerCase() === user && d.data().password === pass) {
+              found = true;
+              foundId = d.id;
+            }
+          });
+          hideLoader();
+          if(found) proceedLogin('Peserta', foundId);
+          else showModal('Gagal', 'ID Pemain atau Password salah!');
+        } catch(e) { hideLoader(); showModal('Error', 'Gagal memuat data'); }
       }
     };
 
@@ -545,37 +500,22 @@
 
     window.loadData = async () => {
       showLoader("MEMUAT DATA...");
-      if (IS_PREVIEW) {
-        setTimeout(() => {
-          globalPemain = JSON.parse(JSON.stringify(dummyPemain));
-          globalJadwal = JSON.parse(JSON.stringify(dummyJadwal));
-          renderAll(); hideLoader();
-        }, 500);
-      } else {
-        try {
-          const [pSnap, jSnap] = await Promise.all([
-            getDocs(collection(db, "pemain")),
-            getDocs(collection(db, "jadwal"))
-          ]);
-          
-          globalPemain = []; globalJadwal = [];
-          pSnap.forEach(d => globalPemain.push({id: d.id, ...d.data()}));
-          jSnap.forEach(d => globalJadwal.push({id: d.id, ...d.data()}));
-          
-          globalPemain.sort((a,b) => a.id.localeCompare(b.id));
-          globalJadwal.sort((a,b) => a.id.localeCompare(b.id));
+      try {
+        const [pSnap, jSnap] = await Promise.all([
+          getDocs(collection(db, "pemain")),
+          getDocs(collection(db, "jadwal"))
+        ]);
+        
+        globalPemain = []; globalJadwal = [];
+        pSnap.forEach(d => globalPemain.push({id: d.id, ...d.data()}));
+        jSnap.forEach(d => globalJadwal.push({id: d.id, ...d.data()}));
+        
+        globalPemain.sort((a,b) => a.id.localeCompare(b.id));
+        globalJadwal.sort((a,b) => a.id.localeCompare(b.id));
 
-          if(globalPemain.length === 0 && currentUser.role === 'Admin') {
-            document.getElementById('btnInitDb').classList.remove('hidden');
-            document.getElementById('gridPemain').innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Database Kosong! Silakan klik "Init DB" di atas.</div>';
-          } else {
-            document.getElementById('btnInitDb').classList.add('hidden');
-          }
-
-          renderAll(); hideLoader();
-        } catch (e) {
-          hideLoader(); showModal('Error', 'Gagal memuat data dari Firebase.');
-        }
+        renderAll(); hideLoader();
+      } catch (e) {
+        hideLoader(); showModal('Error', 'Gagal memuat data dari Firebase.');
       }
     };
 
@@ -585,9 +525,6 @@
 
     const getName = (id) => { const p = globalPemain.find(x => x.id === id); return p ? p.nama_asli : id; };
 
-    // ==========================================
-    // RENDER & EDIT PEMAIN MANUAL OLEH ADMIN
-    // ==========================================
     function renderPemain() {
       const g = document.getElementById('gridPemain');
       g.innerHTML = '';
@@ -601,6 +538,7 @@
           <div class="flex items-center gap-2 border p-3 rounded-lg bg-white shadow-sm">
             <span class="font-bold text-navy w-10">${p.id}</span>
             <input type="text" id="pname-${p.id}" value="${p.nama_asli}" ${isAdmin ? '' : 'readonly'} 
+                   placeholder="Kosongkan untuk mereset"
                    class="flex-1 border border-gray-300 rounded p-1.5 text-sm ${isAdmin ? 'bg-white focus:ring-2 focus:ring-navy' : 'bg-transparent border-none font-semibold'}">
             <i class="fas ${isClaimed ? 'fa-user-check text-green-500' : 'fa-user-clock text-gray-300'}"></i>
           </div>
@@ -609,67 +547,51 @@
     }
 
     window.saveAllPlayers = async () => {
-      let ok = await showModal('Simpan Perubahan', 'Simpan nama-nama pemain yang telah diedit?', true);
+      let ok = await showModal('Simpan Perubahan', 'Simpan nama-nama pemain? Kotak yang dikosongkan akan direset ke status awal.', true);
       if(!ok) return;
 
-      showLoader("MENYIMPAN NAMA...");
-      if(IS_PREVIEW) {
-        setTimeout(() => {
-          globalPemain.forEach(p => {
-            let inputVal = document.getElementById(`pname-${p.id}`).value;
-            if(inputVal) p.nama_asli = inputVal;
-          });
-          renderAll(); hideLoader();
-          showModal('Berhasil', 'Nama pemain berhasil disimpan!');
-        }, 500);
-      } else {
-        try {
-          const batch = writeBatch(db);
-          globalPemain.forEach(p => {
-            let inputVal = document.getElementById(`pname-${p.id}`).value;
-            if(inputVal) {
-              p.nama_asli = inputVal;
-              batch.update(doc(db, "pemain", p.id), { nama_asli: inputVal });
-            }
-          });
-          await batch.commit();
-          await loadData();
-          hideLoader();
-          showModal('Berhasil', 'Semua perubahan nama pemain tersimpan ke database!');
-        } catch(e) {
-          hideLoader();
-          showModal('Error', 'Gagal menyimpan nama pemain.');
-        }
+      showLoader("MENYIMPAN...");
+      try {
+        const batch = writeBatch(db);
+        globalPemain.forEach((p, idx) => {
+          let inputVal = document.getElementById(`pname-${p.id}`).value.trim();
+          let defaultName = `Pemain ${String(idx+1).padStart(2,'0')}`;
+          
+          if(!inputVal) {
+            // Jika dikosongkan, reset ke status awal belum diklaim
+            batch.update(doc(db, "pemain", p.id), { nama_asli: defaultName, password: "", sudah_diklaim: false });
+          } else {
+            batch.update(doc(db, "pemain", p.id), { nama_asli: inputVal });
+          }
+        });
+        await batch.commit();
+        await loadData();
+        hideLoader();
+        showModal('Berhasil', 'Perubahan berhasil disimpan!');
+      } catch(e) {
+        hideLoader();
+        showModal('Error', 'Gagal menyimpan perubahan.');
       }
     };
 
     window.randomizePlayers = async () => {
-      let ok = await showModal('Acak Pemain', 'PERINGATAN: Ini akan mengacak seluruh posisi nama pemain ke dalam jadwal secara random. Lanjutkan?', true);
+      let ok = await showModal('Acak Pemain', 'Acak seluruh posisi nama pemain secara random?', true);
       if(!ok) return;
 
-      showLoader("MENGACAK POSISI...");
-      if(IS_PREVIEW) {
-        setTimeout(() => {
-          let names = globalPemain.map(p => p.nama_asli).sort(() => Math.random() - 0.5);
-          globalPemain.forEach((p, idx) => p.nama_asli = names[idx]);
-          renderAll(); hideLoader();
-        }, 500);
-      } else {
-        try {
-          let names = globalPemain.map(p => p.nama_asli).sort(() => Math.random() - 0.5);
-          const batch = writeBatch(db);
-          globalPemain.forEach((p, idx) => {
-            p.nama_asli = names[idx];
-            batch.update(doc(db, "pemain", p.id), { nama_asli: names[idx] });
-          });
-          await batch.commit();
-          await loadData();
-          hideLoader();
-          showModal('Berhasil', 'Posisi pemain berhasil diacak!');
-        } catch(e) {
-          hideLoader();
-          showModal('Error', 'Gagal mengacak pemain.');
-        }
+      showLoader("MENGACAK...");
+      try {
+        let names = globalPemain.map(p => p.nama_asli).sort(() => Math.random() - 0.5);
+        const batch = writeBatch(db);
+        globalPemain.forEach((p, idx) => {
+          batch.update(doc(db, "pemain", p.id), { nama_asli: names[idx] });
+        });
+        await batch.commit();
+        await loadData();
+        hideLoader();
+        showModal('Berhasil', 'Posisi pemain berhasil diacak!');
+      } catch(e) {
+        hideLoader();
+        showModal('Error', 'Gagal mengacak pemain.');
       }
     };
 
@@ -718,21 +640,13 @@
       if(!val(g1a, g1b) || !val(g2a, g2b)) return showModal('Peringatan', 'Skor tidak valid! Salah satu wajib 15, sisanya 0-14.');
 
       showLoader("MENYIMPAN SKOR...");
-      if(IS_PREVIEW) {
-        setTimeout(() => {
-          let m = globalJadwal.find(x => x.id === mId);
-          m.ag1 = g1a; m.bg1 = g1b; m.ag2 = g2a; m.bg2 = g2b;
-          renderAll(); hideLoader();
-        }, 500);
-      } else {
-        try {
-          await updateDoc(doc(db, "jadwal", mId), {
-            ag1: g1a?parseInt(g1a):null, bg1: g1b?parseInt(g1b):null,
-            ag2: g2a?parseInt(g2a):null, bg2: g2b?parseInt(g2b):null
-          });
-          await loadData();
-        } catch(e) { hideLoader(); showModal('Error', 'Gagal menyimpan skor'); }
-      }
+      try {
+        await updateDoc(doc(db, "jadwal", mId), {
+          ag1: g1a?parseInt(g1a):null, bg1: g1b?parseInt(g1b):null,
+          ag2: g2a?parseInt(g2a):null, bg2: g2b?parseInt(g2b):null
+        });
+        await loadData();
+      } catch(e) { hideLoader(); showModal('Error', 'Gagal menyimpan skor'); }
     };
 
     function calcKlasemen() {
@@ -769,11 +683,10 @@
     }
 
     window.initProdDatabase = async () => {
-      if(IS_PREVIEW) return;
-      let ok = await showModal('Inisialisasi', 'Buat struktur 24 Pemain dan 18 Laga kosong ke Firebase?', true);
+      let ok = await showModal('Reset Total DB', 'PERINGATAN: Ini akan mengosongkan seluruh pendaftar, mereset nama peserta menjadi "Pemain XX", dan menghapus semua skor pertandingan ke awal!', true);
       if(!ok) return;
 
-      showLoader("MEMBUAT DATABASE...");
+      showLoader("MERESET DATABASE...");
       try {
         const batch = writeBatch(db);
         for(let i=1; i<=24; i++) {
@@ -796,7 +709,9 @@
         
         await batch.commit();
         await loadData();
-      } catch(e) { hideLoader(); showModal('Error', 'Gagal inisialisasi DB.'); }
+        hideLoader();
+        showModal('Berhasil', 'Database berhasil direset total ke pengaturan awal!');
+      } catch(e) { hideLoader(); showModal('Error', 'Gagal mereset database.'); }
     };
   </script>
 </body>
