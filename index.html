@@ -57,7 +57,7 @@
     const manifestJSON = {
       "name": "Liga Grand Permata", "short_name": "LGP", "start_url": ".", "display": "standalone",
       "background_color": "#1a365d", "theme_color": "#1a365d",
-      "icons": [{"src": "https://imgur.com/a/a9wdFpL", "sizes": "512x512", "type": "image/png"}]
+      "icons": [{"src": "https://imgur.com/a/YQxKb7T", "sizes": "512x512", "type": "image/png"}]
     };
     const manifestBlob = new Blob([JSON.stringify(manifestJSON)], {type: 'application/json'});
     document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(manifestBlob)}">`);
@@ -135,21 +135,23 @@
       <!-- Rules Section -->
       <div class="flex-1 glass rounded-xl shadow-xl overflow-hidden text-sm">
         <div class="bg-navy text-white font-bold p-3 text-center border-b-4 border-gold">ATURAN LIGA GRAND PERMATA</div>
-        <div class="p-4 overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[500px]">
+        
+        <!-- PERBAIKAN: TABEL ATURAN RESPONSIVE (TIDAK PERLU DIGESER) -->
+        <div class="p-4">
+          <table class="w-full text-left border-collapse">
             <tbody class="divide-y divide-gray-300">
-              <tr><td class="py-2 font-bold w-1/3">Format liga</td><td class="py-2">Setiap pemain tampil tepat 3 kali: satu pertandingan per putaran, dengan 3 partner berbeda.</td></tr>
-              <tr><td class="py-2 font-bold">Pengacakan</td><td class="py-2">Partner dan lawan diacak sekali saat dibuat. Mengganti nama tidak mengacak ulang jadwal.</td></tr>
-              <tr><td class="py-2 font-bold">Skor game</td><td class="py-2">Dua game tetap sampai 15 tanpa deuce. Satu sisi harus 15, sisi lain 0 sampai 14.</td></tr>
-              <tr><td class="py-2 font-bold">Poin individu</td><td class="py-2">Kedua pemain satu tim menerima selisih sama: (A game 1 - B game 1) + (A game 2 - B game 2).</td></tr>
-              <tr><td class="py-2 font-bold">Contoh</td><td class="py-2">15-10 dan 15-12 memberi +8; 13-15 dan 12-15 memberi -5; total sementara +3.</td></tr>
-              <tr><td class="py-2 font-bold">Hasil dihitung</td><td class="py-2">Hanya pertandingan dengan empat skor lengkap dan sah masuk rekap. Skor parsial belum dihitung.</td></tr>
-              <tr><td class="py-2 font-bold">Urutan klasemen</td><td class="py-2">Total selisih terbesar, lalu game menang terbanyak, lalu poin masuk terbanyak.</td></tr>
-              <tr><td class="py-2 font-bold">Jika masih seri</td><td class="py-2">Peringkat tetap sama. ID hanya mengurutkan tampilan, bukan penentu juara; sepakati tie-break bila perlu.</td></tr>
-              <tr><td class="py-2 font-bold">Operasional</td><td class="py-2">Lapangan belum ditetapkan. Dalam satu putaran pemain tidak tumpang tindih: hingga 6 laga bisa bersamaan.</td></tr>
-              <tr><td class="py-2 font-bold">Data perlu diisi</td><td class="py-2">Nama asli 24 pemain, lapangan bila dipakai, dan skor. Nama awal adalah label sementara, bukan data peserta asli.</td></tr>
-              <tr><td class="py-2 font-bold">Kontrol skor</td><td class="py-2">Periksa skor berarti hasil tidak sah. Jangan mengganti kolom rumus atau mengurutkan sebagian tabel input.</td></tr>
-              <tr><td class="py-2 font-bold">Batas jadwal</td><td class="py-2">Jadwal untuk 24 slot tetap. Jika jumlah peserta berubah, jadwal perlu dibuat ulang.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Format liga</td><td class="block md:table-cell pb-2 md:py-2">Setiap pemain tampil tepat 3 kali: satu pertandingan per putaran, dengan 3 partner berbeda.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Pengacakan</td><td class="block md:table-cell pb-2 md:py-2">Partner dan lawan diacak sekali saat dibuat. Mengganti nama tidak mengacak ulang jadwal.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Skor game</td><td class="block md:table-cell pb-2 md:py-2">Dua game tetap sampai 15 tanpa deuce. Satu sisi harus 15, sisi lain 0 sampai 14.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Poin individu</td><td class="block md:table-cell pb-2 md:py-2">Kedua pemain satu tim menerima selisih sama: (A game 1 - B game 1) + (A game 2 - B game 2).</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Contoh</td><td class="block md:table-cell pb-2 md:py-2">15-10 dan 15-12 memberi +8; 13-15 dan 12-15 memberi -5; total sementara +3.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Hasil dihitung</td><td class="block md:table-cell pb-2 md:py-2">Hanya pertandingan dengan empat skor lengkap dan sah masuk rekap. Skor parsial belum dihitung.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Urutan klasemen</td><td class="block md:table-cell pb-2 md:py-2">Total selisih terbesar, lalu game menang terbanyak, lalu poin masuk terbanyak.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Jika masih seri</td><td class="block md:table-cell pb-2 md:py-2">Peringkat tetap sama. ID hanya mengurutkan tampilan, bukan penentu juara; sepakati tie-break bila perlu.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Operasional</td><td class="block md:table-cell pb-2 md:py-2">Lapangan belum ditetapkan. Dalam satu putaran pemain tidak tumpang tindih: hingga 6 laga bisa bersamaan.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Data perlu diisi</td><td class="block md:table-cell pb-2 md:py-2">Nama asli 24 pemain, lapangan bila dipakai, dan skor. Nama awal adalah label sementara, bukan data peserta asli.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Kontrol skor</td><td class="block md:table-cell pb-2 md:py-2">Periksa skor berarti hasil tidak sah. Jangan mengganti kolom rumus atau mengurutkan sebagian tabel input.</td></tr>
+              <tr class="block md:table-row"><td class="block md:table-cell py-1 md:py-2 font-bold md:w-1/3 text-navy">Batas jadwal</td><td class="block md:table-cell pb-2 md:py-2">Jadwal untuk 24 slot tetap. Jika jumlah peserta berubah, jadwal perlu dibuat ulang.</td></tr>
             </tbody>
           </table>
         </div>
@@ -172,8 +174,8 @@
       </div>
     </div>
 
-    <!-- Login Form Overlay -->
-    <div id="loginPanel" class="hidden absolute inset-0 glass-navy z-50 flex items-center justify-center p-4">
+    <!-- PERBAIKAN: FIXED OVERLAY AGAR LOGIN MUNCUL DI TENGAH LAYAR HP TANPA SCROLL -->
+    <div id="loginPanel" class="hidden fixed inset-0 glass-navy z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm relative">
         <button onclick="hideLoginPanel()" class="absolute top-4 left-4 text-gray-400 hover:text-gray-800"><i class="fas fa-arrow-left mr-1"></i> Kembali</button>
         <div class="text-center mt-6 mb-6">
