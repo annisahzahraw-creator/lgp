@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Liga Grand Permata 2026</title>
+  
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- HTML2Canvas untuk Cetak Tiket -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.css"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { navy: '#1a365d', gold: '#d4af37' } } }
+    }
+  </script>
+  <style>
+    body { background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    /* Glassmorphism */
+    .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+    .glass-navy { background: rgba(26, 54, 93, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    
+    /* Loading Overlay */
+    #globalLoader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
+    .gold-ring { width: 60px; height: 60px; border: 5px solid transparent; border-top-color: #d4af37; border-bottom-color: #d4af37; border-radius: 50%; animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    /* Modal / Dialog */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26, 54, 93, 0.6); backdrop-filter: blur(4px); z-index: 9990; justify-content: center; align-items: center; padding: 1rem; }
+    
+    /* Responsive Nav */
+    .desktop-nav { display: none; }
+    .mobile-nav { display: flex; }
+    .content-area { padding-bottom: 80px; } /* Space for mobile bottom nav */
+    
+    @media (min-width: 768px) {
+      .desktop-nav { display: block; width: 250px; height: 100vh; position: fixed; top: 0; left: 0; }
+      .mobile-nav { display: none; }
+      .content-area { padding-bottom: 20px; margin-left: 250px; }
+    }
+    
+    .nav-item.active { background-color: #d4af37; color: #1a365d; font-weight: bold; border-radius: 0.5rem; }
+    
+    /* Ticket UI */
+    #ticketCard { background: linear-gradient(135deg, #1a365d 0%, #2a5298 100%); color: white; border: 2px solid #d4af37; }
+    .ticket-rip { border-bottom: 2px dashed rgba(212, 175, 55, 0.5); margin: 15px 0; }
+  </style>
+</head>
+<body class="text-gray-800">
+
+  <!-- PWA & MANIFEST SETUP -->
+  <script>
+    const manifestJSON = {
+      "name": "Liga Grand Permata", "short_name": "LGP", "start_url": ".", "display": "standalone",
+      "background_color": "#1a365d", "theme_color": "#1a365d",
+      "icons": [{"src": "https://imgur.com/a/a9wdFpL", "sizes": "512x512", "type": "image/png"}]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifestJSON)], {type: 'application/json'});
+    document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(manifestBlob)}">`);
+    const swCode = `self.addEventListener('install', (e)=>{self.skipWaiting();}); self.addEventListener('activate', (e)=>{e.waitUntil(clients.claim());}); self.addEventListener('fetch', ()=>{});`;
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], {type: 'application/javascript'}))).catch(()=>{});
+  </script>
+
+  <!-- GLOBAL LOADER -->
+  <div id="globalLoader">
+    <div class="gold-ring mb-4"></div>
+    <div class="text-gold font-bold tracking-widest text-lg animate-pulse" id="loaderText">MEMPROSES...</div>
+  </div>
+
+  <!-- CUSTOM DIALOG MODAL -->
+  <div id="dialogModal" class="modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden animate-fade-in-up">
+      <div class="bg-navy text-gold font-bold px-4 py-3 text-lg" id="dialogTitle">Pesan</div>
+      <div class="p-5 text-gray-700" id="dialogMessage"></div>
+      <div class="bg-gray-50 px-4 py-3 flex justify-end gap-2 border-t">
+        <button id="dialogBtnCancel" class="hidden px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 font-semibold transition">Batal</button>
+        <button id="dialogBtnOK" class="px-4 py-2 bg-gold text-navy rounded hover:bg-yellow-500 font-bold transition">Mengerti</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TICKET MODAL -->
+  <div id="ticketModal" class="modal-overlay">
+    <div class="max-w-sm w-full relative">
+      <button onclick="closeTicketModal()" class="absolute -top-4 -right-4 bg-red-500 text-white rounded-full w-8 h-8 font-bold border-2 border-white z-10">X</button>
+      <div id="ticketCard" class="rounded-xl shadow-2xl p-6 relative overflow-hidden">
+        <!-- Deco -->
+        <div class="absolute -right-6 -top-6 w-24 h-24 bg-gold rounded-full opacity-20"></div>
+        <div class="text-center mb-2">
+          <div class="text-gold font-black text-2xl tracking-wider">TIKET LGP 2026</div>
+          <div class="text-xs text-blue-200 mt-1 uppercase tracking-widest">Status: Berhasil Terdaftar</div>
+        </div>
+        <div class="ticket-rip"></div>
+        <div class="mb-4">
+          <p class="text-xs text-blue-200 mb-1">NAMA PEMAIN</p>
+          <p class="text-xl font-bold text-white truncate" id="tNama">-</p>
+        </div>
+        <div class="flex gap-4">
+          <div class="flex-1 bg-navy bg-opacity-50 p-3 rounded border border-blue-400">
+            <p class="text-xs text-blue-200 mb-1">USERNAME (ID)</p>
+            <p class="text-2xl font-black text-gold" id="tUser">-</p>
+          </div>
+          <div class="flex-1 bg-navy bg-opacity-50 p-3 rounded border border-blue-400">
+            <p class="text-xs text-blue-200 mb-1">PASSWORD</p>
+            <p class="text-xl font-bold text-white tracking-widest" id="tPass">-</p>
+          </div>
+        </div>
+        <p class="text-center text-[10px] text-blue-300 mt-4">* Simpan gambar ini. Gunakan Username & Password di atas untuk Login.</p>
+      </div>
+      <button onclick="downloadTicket()" class="w-full mt-4 bg-white text-navy font-bold py-3 rounded-lg shadow hover:bg-gray-100 flex items-center justify-center gap-2 transition">
+        <i class="fas fa-download"></i> Unduh Tiket (JPG)
+      </button>
+    </div>
+  </div>
+
+  <!-- LANDING PAGE & LOGIN -->
+  <div id="view-landing" class="min-h-screen bg-navy flex flex-col relative">
+    
+    <!-- PREVIEW BANNER -->
+    <div id="previewBanner" class="hidden bg-red-600 text-white text-center py-1 text-xs font-bold tracking-widest">
+      MODE UJI COBA (DATA DUMMY) - TIDAK TERSAMBUNG KE FIREBASE
+    </div>
+
+    <!-- Header -->
+    <header class="glass-navy p-4 flex justify-between items-center sticky top-0 z-40">
+      <div class="text-gold font-bold text-xl"><i class="fas fa-trophy mr-2"></i> LGP 2026</div>
+      <button onclick="showLoginPanel()" class="bg-gold text-navy px-4 py-1.5 rounded-full font-bold text-sm shadow hover:bg-yellow-500">Login Area</button>
+    </header>
+
+    <div class="p-4 sm:p-8 flex-1 flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto w-full">
+      <!-- Rules Section -->
+      <div class="flex-1 glass rounded-xl shadow-xl overflow-hidden text-sm">
+        <div class="bg-navy text-white font-bold p-3 text-center border-b-4 border-gold">ATURAN LIGA GRAND PERMATA</div>
+        <div class="p-4 overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[500px]">
+            <tbody class="divide-y divide-gray-300">
+              <tr><td class="py-2 font-bold w-1/3">Format liga</td><td class="py-2">Setiap pemain tampil tepat 3 kali: satu pertandingan per putaran, dengan 3 partner berbeda.</td></tr>
+              <tr><td class="py-2 font-bold">Pengacakan</td><td class="py-2">Partner dan lawan diacak sekali saat dibuat. Mengganti nama tidak mengacak ulang jadwal.</td></tr>
+              <tr><td class="py-2 font-bold">Skor game</td><td class="py-2">Dua game tetap sampai 15 tanpa deuce. Satu sisi harus 15, sisi lain 0 sampai 14.</td></tr>
+              <tr><td class="py-2 font-bold">Poin individu</td><td class="py-2">Kedua pemain satu tim menerima selisih sama: (A game 1 - B game 1) + (A game 2 - B game 2).</td></tr>
+              <tr><td class="py-2 font-bold">Contoh</td><td class="py-2">15-10 dan 15-12 memberi +8; 13-15 dan 12-15 memberi -5; total sementara +3.</td></tr>
+              <tr><td class="py-2 font-bold">Hasil dihitung</td><td class="py-2">Hanya pertandingan dengan empat skor lengkap dan sah masuk rekap. Skor parsial belum dihitung.</td></tr>
+              <tr><td class="py-2 font-bold">Urutan klasemen</td><td class="py-2">Total selisih terbesar, lalu game menang terbanyak, lalu poin masuk terbanyak.</td></tr>
+              <tr><td class="py-2 font-bold">Jika masih seri</td><td class="py-2">Peringkat tetap sama. ID hanya mengurutkan tampilan, bukan penentu juara; sepakati tie-break bila perlu.</td></tr>
+              <tr><td class="py-2 font-bold">Operasional</td><td class="py-2">Lapangan belum ditetapkan. Dalam satu putaran pemain tidak tumpang tindih: hingga 6 laga bisa bersamaan.</td></tr>
+              <tr><td class="py-2 font-bold">Data perlu diisi</td><td class="py-2">Nama asli 24 pemain, lapangan bila dipakai, dan skor. Nama awal adalah label sementara, bukan data peserta asli.</td></tr>
+              <tr><td class="py-2 font-bold">Kontrol skor</td><td class="py-2">Periksa skor berarti hasil tidak sah. Jangan mengganti kolom rumus atau mengurutkan sebagian tabel input.</td></tr>
+              <tr><td class="py-2 font-bold">Batas jadwal</td><td class="py-2">Jadwal untuk 24 slot tetap. Jika jumlah peserta berubah, jadwal perlu dibuat ulang.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Lottery Form -->
+      <div class="w-full lg:w-96 glass rounded-xl shadow-xl p-6 flex flex-col h-fit">
+        <h2 class="text-xl font-bold text-navy mb-1"><i class="fas fa-ticket-alt text-gold mr-2"></i>Ambil Slot Undian</h2>
+        <p class="text-xs text-gray-600 mb-5">Daftarkan diri Anda untuk otomatis mendapatkan nomor acak di bagan.</p>
+        
+        <label class="text-sm font-bold text-navy mb-1">Nama Pendaftar</label>
+        <input type="text" id="regName" class="w-full p-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-navy" placeholder="Misal: Ari">
+        
+        <label class="text-sm font-bold text-navy mb-1">Buat Password</label>
+        <input type="text" id="regPass" class="w-full p-2 border border-gray-300 rounded mb-6 focus:outline-none focus:ring-2 focus:ring-navy" placeholder="Minimal 4 karakter">
+        
+        <button onclick="handleLottery()" class="w-full bg-gold text-navy font-bold py-3 rounded-lg shadow-lg hover:bg-yellow-500 transition uppercase tracking-wide">
+          <i class="fas fa-dice mr-2"></i> Ambil Slot & Daftar
+        </button>
+      </div>
+    </div>
+
+    <!-- Login Form Overlay -->
+    <div id="loginPanel" class="hidden absolute inset-0 glass-navy z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-sm relative">
+        <button onclick="hideLoginPanel()" class="absolute top-4 left-4 text-gray-400 hover:text-gray-800"><i class="fas fa-arrow-left mr-1"></i> Kembali</button>
+        <div class="text-center mt-6 mb-6">
+          <h2 class="text-2xl font-bold text-navy">Login LGP</h2>
+          <p class="text-xs text-gray-500">Masuk sebagai Peserta atau Admin</p>
+        </div>
+        <div id="demoLoginHint" class="hidden text-xs bg-blue-50 text-blue-800 p-2 rounded mb-4 border border-blue-200 text-center">
+          <b>Demo Mode:</b><br>Admin: admin / 12345<br>User: P01 / 12345
+        </div>
+        <input type="text" id="loginUser" class="w-full p-3 border border-gray-300 rounded mb-3" placeholder="Username (P01) / Email Admin">
+        <input type="password" id="loginPass" class="w-full p-3 border border-gray-300 rounded mb-6" placeholder="Password">
+        <button onclick="handleLogin()" class="w-full bg-navy text-gold font-bold py-3 rounded-lg shadow hover:bg-opacity-90 transition">LOGIN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP (DASHBOARD) -->
+  <div id="view-app" class="hidden min-h-screen">
+    
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="desktop-nav bg-navy text-white shadow-xl flex flex-col">
+      <div class="p-6 text-center border-b border-blue-800">
+        <div class="text-3xl text-gold mb-2"><i class="fas fa-trophy"></i></div>
+        <h1 class="font-bold text-xl tracking-wider">LGP 2026</h1>
+        <div id="deskRole" class="text-xs bg-gold text-navy inline-block px-3 py-1 rounded-full font-bold mt-2"></div>
+      </div>
+      <nav class="flex-1 p-4 flex flex-col gap-2">
+        <button onclick="switchMenu('klasemen')" id="nav-d-klasemen" class="nav-item active flex items-center gap-3 p-3 text-left transition"><i class="fas fa-list-ol w-5 text-center"></i> Klasemen</button>
+        <button onclick="switchMenu('jadwal')" id="nav-d-jadwal" class="nav-item flex items-center gap-3 p-3 text-left text-gray-400 hover:text-white transition"><i class="fas fa-calendar-alt w-5 text-center"></i> Jadwal & Skor</button>
+        <button onclick="switchMenu('pemain')" id="nav-d-pemain" class="nav-item flex items-center gap-3 p-3 text-left text-gray-400 hover:text-white transition"><i class="fas fa-users w-5 text-center"></i> Pemain</button>
+      </nav>
+      <div class="p-4 border-t border-blue-800">
+        <button onclick="handleLogout()" class="w-full text-red-400 hover:text-red-300 font-bold p-2 text-left"><i class="fas fa-sign-out-alt w-5 text-center mr-2"></i> Logout</button>
+      </div>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main class="content-area">
+      <!-- Mobile Header -->
+      <header class="md:hidden bg-navy text-white p-4 sticky top-0 z-30 shadow flex justify-between items-center">
+        <div class="font-bold text-gold"><i class="fas fa-trophy mr-2"></i>LGP 2026</div>
+        <div class="flex items-center gap-3">
+          <span id="mobRole" class="text-xs bg-gold text-navy px-2 py-0.5 rounded-full font-bold"></span>
+          <button onclick="handleLogout()" class="text-red-400"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+      </header>
+
+      <div class="p-4 max-w-5xl mx-auto">
+        
+        <!-- MODULE: KLASEMEN -->
+        <section id="mod-klasemen" class="animate-fade-in">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-navy">Klasemen Sementara</h2>
+            <button onclick="loadData()" class="text-sm bg-white border border-gray-300 px-3 py-1.5 rounded shadow hover:bg-gray-50"><i class="fas fa-sync-alt mr-1"></i> Refresh</button>
+          </div>
+          <div class="bg-white rounded-xl shadow overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left">
+                <thead class="bg-navy text-white text-xs uppercase tracking-wider">
+                  <tr>
+                    <th class="px-3 py-3 text-center w-12">Rnk</th>
+                    <th class="px-3 py-3">Pemain</th>
+                    <th class="px-2 py-3 text-center">Main</th>
+                    <th class="px-2 py-3 text-center" title="Selisih">+/-</th>
+                    <th class="px-2 py-3 text-center hidden sm:table-cell" title="Menang">M</th>
+                    <th class="px-2 py-3 text-center hidden sm:table-cell" title="Poin">P</th>
+                  </tr>
+                </thead>
+                <tbody id="tblKlasemen" class="divide-y divide-gray-200"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- MODULE: JADWAL -->
+        <section id="mod-jadwal" class="hidden animate-fade-in">
+          <h2 class="text-2xl font-bold text-navy mb-4">Jadwal & Skor</h2>
+          <div class="bg-blue-50 text-blue-800 p-3 rounded-lg border border-blue-200 text-xs mb-4">
+            <i class="fas fa-info-circle mr-1"></i> Game 15 tanpa deuce (salah satu wajib 15, lainnya max 14).
+          </div>
+          <div class="bg-white rounded-xl shadow overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-center">
+                <thead class="bg-navy text-white text-xs">
+                  <tr>
+                    <th class="px-2 py-3 sticky left-0 bg-navy z-10">Laga</th>
+                    <th class="px-2 py-3 text-right">Tim A</th>
+                    <th class="px-1 py-3 text-gray-400">vs</th>
+                    <th class="px-2 py-3 text-left">Tim B</th>
+                    <th class="px-1 py-3 bg-blue-800">A1</th>
+                    <th class="px-1 py-3 bg-blue-800">B1</th>
+                    <th class="px-1 py-3 bg-green-800">A2</th>
+                    <th class="px-1 py-3 bg-green-800">B2</th>
+                    <th class="px-2 py-3">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tblJadwal" class="divide-y divide-gray-200"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- MODULE: PEMAIN -->
+        <section id="mod-pemain" class="hidden animate-fade-in">
+          <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+            <h2 class="text-2xl font-bold text-navy">Daftar Pemain</h2>
+            <div id="adminTools" class="hidden gap-2">
+               <!-- Tombol Inisialisasi Database hanya muncul jika kosong & IS_PREVIEW false -->
+               <button id="btnInitDb" onclick="initProdDatabase()" class="hidden bg-red-600 text-white font-bold px-4 py-2 rounded shadow hover:bg-red-700 text-sm"><i class="fas fa-database mr-1"></i> Init DB</button>
+               <button onclick="randomizePlayers()" class="bg-gold text-navy font-bold px-4 py-2 rounded shadow hover:bg-yellow-500 text-sm"><i class="fas fa-random mr-1"></i> Acak Pemain</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="gridPemain"></div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- MOBILE BOTTOM NAV -->
+    <nav class="mobile-nav bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] fixed bottom-0 w-full z-40 flex justify-around text-xs font-semibold text-gray-500 border-t">
+      <button onclick="switchMenu('klasemen')" id="nav-m-klasemen" class="flex-1 py-3 flex flex-col items-center gap-1 text-navy active-nav">
+        <i class="fas fa-list-ol text-lg"></i><span>Klasemen</span>
+      </button>
+      <button onclick="switchMenu('jadwal')" id="nav-m-jadwal" class="flex-1 py-3 flex flex-col items-center gap-1 hover:text-navy">
+        <i class="fas fa-calendar-alt text-lg"></i><span>Jadwal</span>
+      </button>
+      <button onclick="switchMenu('pemain')" id="nav-m-pemain" class="flex-1 py-3 flex flex-col items-center gap-1 hover:text-navy">
+        <i class="fas fa-users text-lg"></i><span>Pemain</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- KODE LOGIKA & FIREBASE -->
+  <script type="module">
+    // ==========================================
+    // 1. KONFIGURASI APLIKASI (SAKLAR MODE)
+    // ==========================================
+    const IS_PREVIEW = false; // UBAH KE false UNTUK MODE PRODUKSI FIREBASE
+
+    // KONFIGURASI FIREBASE ANDA (Isi saat IS_PREVIEW = false)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDq8JPG90uX0D0ZbGxSetuTuTITLBv7Eyk",
+      authDomain: "lgp-2026.firebaseapp.com",
+      projectId: "lgp-2026",
+      storageBucket: "lgp-2026.firebasestorage.app",
+      messagingSenderId: "816537171678",
+      appId: "1:816537171678:web:24587d05ac4dbdf4fab44f"
+    };
+
+    // ==========================================
+    // 2. IMPORTS & SETUP
+    // ==========================================
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    let app, db, auth;
+    if (!IS_PREVIEW) {
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      auth = getAuth(app);
+    }
+
+    // STATE LOKAL
+    let currentUser = null; // { role: 'Admin' | 'Peserta', username: string }
+    let globalPemain = [];
+    let globalJadwal = [];
+
+    // DATA DUMMY (HANYA AKTIF JIKA IS_PREVIEW = true)
+    let dummyPemain = [], dummyJadwal = [];
+    if (IS_PREVIEW) {
+      document.getElementById('previewBanner').classList.remove('hidden');
+      document.getElementById('demoLoginHint').classList.remove('hidden');
+      
+      // Buat hanya 2 data dummy pemain
+      dummyPemain = [
+        { id: 'P01', nama_asli: 'Budi (Dummy)', password: '123', sudah_diklaim: true },
+        { id: 'P02', nama_asli: 'Pemain 02', password: '', sudah_diklaim: false }
+      ];
+      // Buat hanya 2 data dummy jadwal
+      dummyJadwal = [
+        { id: 'M01', putaran: 1, a1: 'P01', a2: 'P02', b1: 'P03', b2: 'P04', ag1: '', bg1: '', ag2: '', bg2: '' },
+        { id: 'M02', putaran: 1, a1: 'P05', a2: 'P06', b1: 'P07', b2: 'P08', ag1: '', bg1: '', ag2: '', bg2: '' }
+      ];
+    }
+
+    // ==========================================
+    // 3. FUNGSI UI & UTILS
+    // ==========================================
+    window.showLoader = (text = "MEMPROSES...") => { 
+      document.getElementById('loaderText').innerText = text;
+      document.getElementById('globalLoader').style.display = 'flex'; 
+    };
+    window.hideLoader = () => { document.getElementById('globalLoader').style.display = 'none'; };
+    
+    let modalResolve = null;
+    window.showModal = (title, message, isConfirm = false) => {
+      return new Promise((resolve) => {
+        document.getElementById('dialogTitle').innerText = title;
+        document.getElementById('dialogMessage').innerText = message;
+        document.getElementById('dialogModal').style.display = 'flex';
+        
+        const btnCancel = document.getElementById('dialogBtnCancel');
+        const btnOk = document.getElementById('dialogBtnOK');
+        
+        if(isConfirm) {
+          btnCancel.classList.remove('hidden');
+          btnCancel.onclick = () => { closeDialog(); resolve(false); };
+          btnOk.onclick = () => { closeDialog(); resolve(true); };
+        } else {
+          btnCancel.classList.add('hidden');
+          btnOk.onclick = () => { closeDialog(); resolve(true); };
+        }
+      });
+    };
+    window.closeDialog = () => { document.getElementById('dialogModal').style.display = 'none'; };
+
+    window.showLoginPanel = () => { document.getElementById('loginPanel').classList.remove('hidden'); };
+    window.hideLoginPanel = () => { document.getElementById('loginPanel').classList.add('hidden'); };
+    
+    window.switchMenu = (menuId) => {
+      ['klasemen', 'jadwal', 'pemain'].forEach(id => {
+        document.getElementById(`mod-${id}`).classList.add('hidden');
+        document.getElementById(`nav-d-${id}`).classList.remove('active', 'bg-gold', 'text-navy', 'font-bold');
+        document.getElementById(`nav-d-${id}`).classList.add('text-gray-400');
+        document.getElementById(`nav-m-${id}`).classList.remove('text-navy');
+      });
+      document.getElementById(`mod-${menuId}`).classList.remove('hidden');
+      document.getElementById(`nav-d-${menuId}`).classList.add('active', 'bg-gold', 'text-navy', 'font-bold');
+      document.getElementById(`nav-d-${menuId}`).classList.remove('text-gray-400');
+      document.getElementById(`nav-m-${menuId}`).classList.add('text-navy');
+      if(menuId === 'klasemen') calcKlasemen();
+    };
+
+    window.showTicket = (nama, user, pass) => {
+      document.getElementById('tNama').innerText = nama;
+      document.getElementById('tUser').innerText = user;
+      document.getElementById('tPass').innerText = pass;
+      document.getElementById('ticketModal').style.display = 'flex';
+    };
+    window.closeTicketModal = () => { document.getElementById('ticketModal').style.display = 'none'; };
+    
+    window.downloadTicket = () => {
+      const card = document.getElementById('ticketCard');
+      html2canvas(card, { scale: 2, backgroundColor: null }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `Tiket_LGP_${document.getElementById('tUser').innerText}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+      });
+    };
+
+    // ==========================================
+    // 4. LOGIKA LOTRE (PENDAFTARAN)
+    // ==========================================
+    window.handleLottery = async () => {
+      const name = document.getElementById('regName').value.trim();
+      const pass = document.getElementById('regPass').value.trim();
+      if(!name || pass.length < 4) return showModal('Peringatan', 'Nama wajib diisi dan Password minimal 4 karakter!');
+      
+      showLoader("MENGACAK SLOT...");
+      
+      if (IS_PREVIEW) {
+        setTimeout(() => {
+          let avail = dummyPemain.filter(p => !p.sudah_diklaim);
+          hideLoader();
+          if(avail.length === 0) return showModal('Maaf', 'Semua 24 slot telah penuh terisi!');
+          // Ambil acak
+          let slot = avail[Math.floor(Math.random() * avail.length)];
+          slot.sudah_diklaim = true; slot.nama_asli = name; slot.password = pass;
+          document.getElementById('regName').value = ''; document.getElementById('regPass').value = '';
+          showTicket(name, slot.id, pass);
+        }, 1000);
+      } else {
+        // PRODUCTION FIREBASE - Cari slot kosong
+        try {
+          const snap = await getDocs(collection(db, "pemain"));
+          let avail = [];
+          snap.forEach(d => { if(!d.data().sudah_diklaim) avail.push({id: d.id, ...d.data()}) });
+          if(avail.length === 0) { hideLoader(); return showModal('Maaf', 'Semua 24 slot penuh!'); }
+          
+          let slot = avail[Math.floor(Math.random() * avail.length)];
+          await updateDoc(doc(db, "pemain", slot.id), {
+            nama_asli: name, password: pass, sudah_diklaim: true
+          });
+          
+          hideLoader();
+          document.getElementById('regName').value = ''; document.getElementById('regPass').value = '';
+          showTicket(name, slot.id, pass);
+        } catch (e) {
+          hideLoader(); showModal('Error', 'Gagal mendaftar. Pastikan koneksi stabil.');
+        }
+      }
+    };
+
+    // ==========================================
+    // 5. LOGIKA LOGIN (HYBRID)
+    // ==========================================
+    window.handleLogin = async () => {
+      const user = document.getElementById('loginUser').value.trim();
+      const pass = document.getElementById('loginPass').value.trim();
+      if(!user || !pass) return showModal('Error', 'Isi username dan password!');
+
+      showLoader("LOGIN...");
+
+      if (IS_PREVIEW) {
+        setTimeout(() => {
+          hideLoader();
+          if(user === 'admin' && pass === '12345') proceedLogin('Admin', 'Panitia');
+          else if(user === 'P01' && pass === '12345') proceedLogin('Peserta', 'P01');
+          else showModal('Gagal', 'Username/Password salah!');
+        }, 800);
+      } else {
+        // PRODUCTION FIREBASE
+        if(user.includes('@')) {
+          // Login Admin via Firebase Auth
+          try {
+            await signInWithEmailAndPassword(auth, user, pass);
+            // onAuthStateChanged akan menangani UI
+            hideLoader();
+          } catch(e) { hideLoader(); showModal('Gagal', 'Email/Password Admin salah!'); }
+        } else {
+          // Login Peserta via Cek Koleksi Firestore
+          try {
+            const snap = await getDocs(collection(db, "pemain"));
+            let found = false;
+            snap.forEach(d => {
+              if(d.id === user.toUpperCase() && d.data().password === pass) {
+                found = true;
+                proceedLogin('Peserta', d.id);
+              }
+            });
+            hideLoader();
+            if(!found) showModal('Gagal', 'ID Pemain atau Password salah!');
+          } catch(e) { hideLoader(); showModal('Error', 'Gagal memuat data'); }
+        }
+      }
+    };
+
+    // Listener Auth khusus Admin (Production)
+    if(!IS_PREVIEW) {
+      onAuthStateChanged(auth, (user) => {
+        if(user) proceedLogin('Admin', user.email);
+      });
+    }
+
+    function proceedLogin(role, identifier) {
+      currentUser = { role, username: identifier };
+      document.getElementById('view-landing').classList.add('hidden');
+      document.getElementById('loginPanel').classList.add('hidden');
+      document.getElementById('view-app').classList.remove('hidden');
+      
+      document.getElementById('deskRole').innerText = role;
+      document.getElementById('mobRole').innerText = role;
+      
+      if(role === 'Admin') document.getElementById('adminTools').classList.replace('hidden', 'flex');
+      else document.getElementById('adminTools').classList.replace('flex', 'hidden');
+      
+      window.loadData();
+    }
+
+    window.handleLogout = () => {
+      currentUser = null;
+      if(!IS_PREVIEW && auth.currentUser) signOut(auth);
+      document.getElementById('view-app').classList.add('hidden');
+      document.getElementById('view-landing').classList.remove('hidden');
+      document.getElementById('loginUser').value = ''; document.getElementById('loginPass').value = '';
+    };
+
+    // ==========================================
+    // 6. LOAD & RENDER DATA
+    // ==========================================
+    window.loadData = async () => {
+      showLoader("MEMUAT DATA...");
+      if (IS_PREVIEW) {
+        setTimeout(() => {
+          globalPemain = JSON.parse(JSON.stringify(dummyPemain));
+          globalJadwal = JSON.parse(JSON.stringify(dummyJadwal));
+          renderAll(); hideLoader();
+        }, 500);
+      } else {
+        try {
+          const [pSnap, jSnap] = await Promise.all([
+            getDocs(collection(db, "pemain")),
+            getDocs(collection(db, "jadwal"))
+          ]);
+          
+          globalPemain = []; globalJadwal = [];
+          pSnap.forEach(d => globalPemain.push({id: d.id, ...d.data()}));
+          jSnap.forEach(d => globalJadwal.push({id: d.id, ...d.data()}));
+          
+          // Sort berdasar ID (P01, P02...) dan (M01, M02...)
+          globalPemain.sort((a,b) => a.id.localeCompare(b.id));
+          globalJadwal.sort((a,b) => a.id.localeCompare(b.id));
+
+          // Cek jika database kosong, munculkan tombol inisiasi khusus admin
+          if(globalPemain.length === 0 && currentUser.role === 'Admin') {
+            document.getElementById('btnInitDb').classList.remove('hidden');
+            document.getElementById('gridPemain').innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Database Kosong! Silakan klik "Init DB" di atas.</div>';
+          } else {
+            document.getElementById('btnInitDb').classList.add('hidden');
+          }
+
+          renderAll(); hideLoader();
+        } catch (e) {
+          hideLoader(); showModal('Error', 'Gagal memuat data dari Firebase.');
+        }
+      }
+    };
+
+    function renderAll() {
+      renderPemain(); renderJadwal(); calcKlasemen();
+    }
+
+    const getName = (id) => { const p = globalPemain.find(x => x.id === id); return p ? p.nama_asli : id; };
+
+    function renderPemain() {
+      const g = document.getElementById('gridPemain');
+      g.innerHTML = '';
+      if(globalPemain.length === 0) return;
+
+      globalPemain.forEach(p => {
+        let isClaimed = p.sudah_diklaim;
+        g.innerHTML += `
+          <div class="flex items-center gap-2 border p-3 rounded-lg bg-white shadow-sm">
+            <span class="font-bold text-navy w-10">${p.id}</span>
+            <div class="flex-1 truncate font-semibold ${isClaimed ? 'text-gray-800' : 'text-gray-400 italic'}">${p.nama_asli}</div>
+            <i class="fas ${isClaimed ? 'fa-user-check text-green-500' : 'fa-user-clock text-gray-300'}"></i>
+          </div>
+        `;
+      });
+    }
+
+    function renderJadwal() {
+      const tb = document.getElementById('tblJadwal');
+      tb.innerHTML = '';
+      const isAdmin = currentUser && currentUser.role === 'Admin';
+
+      globalJadwal.forEach(m => {
+        let isDone = m.ag1 !== '' && m.ag1 !== null && m.bg1 !== '' && m.ag2 !== '' && m.bg2 !== '';
+        tb.innerHTML += `
+          <tr class="${isDone ? 'bg-green-50' : 'bg-white'} border-b">
+            <td class="px-2 py-2 font-bold sticky left-0 ${isDone ? 'bg-green-50' : 'bg-white'} z-10">${m.id}</td>
+            <td class="px-2 py-2 text-right">
+              <div class="font-semibold truncate w-20 ml-auto">${getName(m.a1)}</div>
+              <div class="font-semibold truncate w-20 ml-auto">${getName(m.a2)}</div>
+            </td>
+            <td class="px-1 py-2 text-gray-400 font-bold text-xs">VS</td>
+            <td class="px-2 py-2 text-left">
+              <div class="font-semibold truncate w-20">${getName(m.b1)}</div>
+              <div class="font-semibold truncate w-20">${getName(m.b2)}</div>
+            </td>
+            <td class="px-1 py-2"><input type="number" id="ag1-${m.id}" value="${m.ag1||''}" ${isAdmin?'':'disabled'} class="w-10 text-center border rounded py-1 bg-blue-50"></td>
+            <td class="px-1 py-2"><input type="number" id="bg1-${m.id}" value="${m.bg1||''}" ${isAdmin?'':'disabled'} class="w-10 text-center border rounded py-1 bg-blue-50"></td>
+            <td class="px-1 py-2"><input type="number" id="ag2-${m.id}" value="${m.ag2||''}" ${isAdmin?'':'disabled'} class="w-10 text-center border rounded py-1 bg-green-50"></td>
+            <td class="px-1 py-2"><input type="number" id="bg2-${m.id}" value="${m.bg2||''}" ${isAdmin?'':'disabled'} class="w-10 text-center border rounded py-1 bg-green-50"></td>
+            <td class="px-2 py-2">
+              ${isAdmin ? `<button onclick="saveScore('${m.id}')" class="bg-navy text-white text-xs px-2 py-1 rounded shadow"><i class="fas fa-save"></i></button>` : `<i class="fas ${isDone ? 'fa-check text-green-500':'fa-clock text-gray-300'}"></i>`}
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    window.saveScore = async (mId) => {
+      const g1a = document.getElementById(`ag1-${mId}`).value; const g1b = document.getElementById(`bg1-${mId}`).value;
+      const g2a = document.getElementById(`ag2-${mId}`).value; const g2b = document.getElementById(`bg2-${mId}`).value;
+      
+      // Validasi tanpa deuce
+      const val = (a, b) => {
+        if(a==='' && b==='') return true;
+        let na=parseInt(a), nb=parseInt(b);
+        if(isNaN(na)||isNaN(nb)||na>15||nb>15) return false;
+        return (na===15 && nb<15) || (nb===15 && na<15);
+      };
+
+      if(!val(g1a, g1b) || !val(g2a, g2b)) return showModal('Peringatan', 'Skor tidak valid! Salah satu wajib 15, sisanya 0-14.');
+
+      showLoader("MENYIMPAN SKOR...");
+      if(IS_PREVIEW) {
+        setTimeout(() => {
+          let m = globalJadwal.find(x => x.id === mId);
+          m.ag1 = g1a; m.bg1 = g1b; m.ag2 = g2a; m.bg2 = g2b;
+          renderAll(); hideLoader();
+        }, 500);
+      } else {
+        try {
+          await updateDoc(doc(db, "jadwal", mId), {
+            ag1: g1a?parseInt(g1a):null, bg1: g1b?parseInt(g1b):null,
+            ag2: g2a?parseInt(g2a):null, bg2: g2b?parseInt(g2b):null
+          });
+          await loadData(); // Reload dari DB
+        } catch(e) { hideLoader(); showModal('Error', 'Gagal menyimpan skor'); }
+      }
+    };
+
+    function calcKlasemen() {
+      let stats = {};
+      globalPemain.forEach(p => stats[p.id] = { id: p.id, nama: p.nama_asli, main: 0, selisih: 0, menang: 0, poin: 0 });
+
+      globalJadwal.forEach(m => {
+        if(m.ag1 !== '' && m.ag1 !== null && m.bg1 !== '' && m.ag2 !== '' && m.bg2 !== '') {
+          let a1=parseInt(m.ag1), b1=parseInt(m.bg1), a2=parseInt(m.ag2), b2=parseInt(m.bg2);
+          let diffA = (a1-b1)+(a2-b2); let diffB = (b1-a1)+(b2-a2);
+          let winA = (a1>b1?1:0)+(a2>b2?1:0); let winB = (b1>a1?1:0)+(b2>a2?1:0);
+          
+          [m.a1, m.a2].forEach(id => { if(stats[id]){ stats[id].main++; stats[id].selisih+=diffA; stats[id].menang+=winA; stats[id].poin+=(a1+a2); }});
+          [m.b1, m.b2].forEach(id => { if(stats[id]){ stats[id].main++; stats[id].selisih+=diffB; stats[id].menang+=winB; stats[id].poin+=(b1+b2); }});
+        }
+      });
+
+      let rnk = Object.values(stats).sort((a,b) => b.selisih !== a.selisih ? b.selisih - a.selisih : (b.menang !== a.menang ? b.menang - a.menang : b.poin - a.poin));
+      
+      const tb = document.getElementById('tblKlasemen'); tb.innerHTML = '';
+      rnk.forEach((r, i) => {
+        let cls = i===0 ? 'bg-yellow-100 font-bold' : (i===1 ? 'bg-gray-200 font-bold' : (i===2 ? 'bg-orange-100' : 'hover:bg-gray-50'));
+        tb.innerHTML += `
+          <tr class="${cls} border-b">
+            <td class="px-3 py-2 text-center text-gray-700">${i+1}</td>
+            <td class="px-3 py-2 font-semibold truncate max-w-[120px]">${r.nama}</td>
+            <td class="px-2 py-2 text-center">${r.main}</td>
+            <td class="px-2 py-2 text-center font-bold ${r.selisih>0?'text-green-600':(r.selisih<0?'text-red-600':'')}">${r.selisih>0?'+'+r.selisih:r.selisih}</td>
+            <td class="px-2 py-2 text-center hidden sm:table-cell">${r.menang}</td>
+            <td class="px-2 py-2 text-center hidden sm:table-cell">${r.poin}</td>
+          </tr>
+        `;
+      });
+    }
+
+    // ==========================================
+    // 7. ADMIN TOOL: INIT DATABASE
+    // ==========================================
+    window.initProdDatabase = async () => {
+      if(IS_PREVIEW) return;
+      let ok = await showModal('Inisialisasi', 'Buat struktur 24 Pemain dan 18 Laga kosong ke Firebase?', true);
+      if(!ok) return;
+
+      showLoader("MEMBUAT DATABASE...");
+      try {
+        const batch = writeBatch(db);
+        // Buat 24 Pemain
+        for(let i=1; i<=24; i++) {
+          let id = 'P'+String(i).padStart(2,'0');
+          batch.set(doc(db, "pemain", id), { nama_asli: `Pemain ${String(i).padStart(2,'0')}`, password: '', sudah_diklaim: false });
+        }
+        // Buat 18 Laga (Susunan paten)
+        const jd = [
+          ['M01',1,'P18','P13','P04','P20'],['M02',1,'P01','P21','P19','P08'],['M03',1,'P23','P03','P12','P24'],
+          ['M04',1,'P17','P16','P06','P02'],['M05',1,'P10','P09','P22','P07'],['M06',1,'P05','P14','P15','P11'],
+          ['M07',2,'P19','P16','P18','P11'],['M08',2,'P03','P14','P02','P01'],['M09',2,'P17','P20','P04','P21'],
+          ['M10',2,'P09','P13','P15','P24'],['M11',2,'P08','P12','P07','P05'],['M12',2,'P06','P23','P22','P10'],
+          ['M13',3,'P07','P02','P22','P15'],['M14',3,'P17','P23','P11','P13'],['M15',3,'P01','P24','P04','P21'],
+          ['M16',3,'P06','P09','P05','P20'],['M17',3,'P08','P14','P03','P18'],['M18',3,'P12','P16','P19','P10']
+        ];
+        jd.forEach(x => {
+          batch.set(doc(db, "jadwal", x[0]), { putaran: x[1], a1: x[2], a2: x[3], b1: x[4], b2: x[5], ag1: null, bg1: null, ag2: null, bg2: null });
+        });
+        
+        await batch.commit();
+        await loadData();
+      } catch(e) { hideLoader(); showModal('Error', 'Gagal inisialisasi DB.'); }
+    };
+  </script>
+</body>
+</html>
