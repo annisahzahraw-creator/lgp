@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- HTML2Canvas untuk Cetak Tiket -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.css"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script>
@@ -20,39 +19,28 @@
   </script>
   <style>
     body { background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    /* Glassmorphism */
     .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
     .glass-navy { background: rgba(26, 54, 93, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-    
-    /* Loading Overlay */
     #globalLoader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
     .gold-ring { width: 60px; height: 60px; border: 5px solid transparent; border-top-color: #d4af37; border-bottom-color: #d4af37; border-radius: 50%; animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    
-    /* Modal / Dialog */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26, 54, 93, 0.6); backdrop-filter: blur(4px); z-index: 9990; justify-content: center; align-items: center; padding: 1rem; }
-    
     .nav-item.active { background-color: #d4af37; color: #1a365d; font-weight: bold; border-radius: 0.5rem; }
-    
-    /* Ticket UI */
     #ticketCard { background: linear-gradient(135deg, #1a365d 0%, #2a5298 100%); color: white; border: 2px solid #d4af37; }
     .ticket-rip { border-bottom: 2px dashed rgba(212, 175, 55, 0.5); margin: 15px 0; }
-
-    /* Custom Scrollbar for a cleaner look */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f1f1f1; }
     ::-webkit-scrollbar-thumb { background: #1a365d; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #d4af37; }
   </style>
 </head>
 <body class="text-gray-800 pb-20 md:pb-0">
 
-  <!-- PWA & MANIFEST SETUP -->
+  <!-- PWA & MANIFEST SETUP (MENGGUNAKAN IKON PUBLIK GRATIS) -->
   <script>
     const manifestJSON = {
       "name": "Liga Grand Permata", "short_name": "LGP", "start_url": ".", "display": "standalone",
       "background_color": "#1a365d", "theme_color": "#1a365d",
-      "icons": [{"src": "https://i.imgur.com/a9wdFpL.png", "sizes": "512x512", "type": "image/png"}]
+      "icons": [{"src": "https://cdn-icons-png.flaticon.com/512/3112/3112946.png", "sizes": "512x512", "type": "image/png"}]
     };
     const manifestBlob = new Blob([JSON.stringify(manifestJSON)], {type: 'application/json'});
     document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(manifestBlob)}">`);
@@ -84,7 +72,7 @@
   <!-- BANNER INSTALL PWA -->
   <div id="installBanner" style="display: none;" class="bg-gold text-navy p-3 font-bold justify-between items-center shadow-md z-[9999] fixed top-0 w-full md:relative">
     <div class="flex items-center gap-3">
-      <img src="https://i.imgur.com/a9wdFpL.png" class="w-10 h-10 rounded shadow">
+      <img src="https://cdn-icons-png.flaticon.com/512/3112/3112946.png" class="w-10 h-10 rounded shadow bg-white p-1">
       <span class="text-sm">Install Aplikasi LGP ke Layar Utama</span>
     </div>
     <div class="flex gap-3">
@@ -210,8 +198,6 @@
         <div id="demoLoginHint" class="hidden text-xs bg-blue-50 text-blue-800 p-2 rounded mb-4 border border-blue-200 text-center">
           <b>Demo Mode:</b><br>Admin: admin@lgp.com / 12345<br>User: P01 / 12345
         </div>
-        
-        <!-- PETUNJUK EMAIL DIUBAH AGAR LEBIH JELAS -->
         <input type="text" id="loginUser" class="w-full p-3 border border-gray-300 rounded mb-3" placeholder="ID Peserta (P01) / Email Admin">
         <input type="password" id="loginPass" class="w-full p-3 border border-gray-300 rounded mb-6" placeholder="Password">
         <button onclick="handleLogin()" class="w-full bg-navy text-gold font-bold py-3 rounded-lg shadow hover:bg-opacity-90 transition">LOGIN</button>
@@ -267,8 +253,6 @@
                     <th class="px-2 py-3">Pemain</th>
                     <th class="px-1 py-3 text-center w-12">Main</th>
                     <th class="px-1 py-3 text-center w-12" title="Selisih">+/-</th>
-                    
-                    <!-- M (Menang) dan P (Poin) sekarang selalu tampil -->
                     <th class="px-1 py-3 text-center w-10" title="Menang">M</th>
                     <th class="px-1 py-3 text-center w-10" title="Poin">P</th>
                   </tr>
@@ -312,7 +296,6 @@
           <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
             <h2 class="text-2xl font-bold text-navy">Daftar Pemain</h2>
             <div id="adminTools" class="hidden gap-2">
-               <!-- Tombol Inisialisasi Database hanya muncul jika kosong & IS_PREVIEW false -->
                <button id="btnInitDb" onclick="initProdDatabase()" class="hidden bg-red-600 text-white font-bold px-4 py-2 rounded shadow hover:bg-red-700 text-sm"><i class="fas fa-database mr-1"></i> Init DB</button>
                <button onclick="randomizePlayers()" class="bg-gold text-navy font-bold px-4 py-2 rounded shadow hover:bg-yellow-500 text-sm"><i class="fas fa-random mr-1"></i> Acak Pemain</button>
             </div>
@@ -339,12 +322,8 @@
 
   <!-- KODE LOGIKA & FIREBASE -->
   <script type="module">
-    // ==========================================
-    // 1. KONFIGURASI APLIKASI (SAKLAR MODE)
-    // ==========================================
-    const IS_PREVIEW = false; // UBAH KE false UNTUK MODE PRODUKSI FIREBASE
+    const IS_PREVIEW = false;
 
-    // KONFIGURASI FIREBASE ANDA (Isi saat IS_PREVIEW = false)
     const firebaseConfig = {
       apiKey: "AIzaSyDq8JPG90uX0D0ZbGxSetuTuTITLBv7Eyk",
       authDomain: "lgp-2026.firebaseapp.com",
@@ -354,9 +333,6 @@
       appId: "1:816537171678:web:24587d05ac4dbdf4fab44f"
     };
 
-    // ==========================================
-    // 2. IMPORTS & SETUP
-    // ==========================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, getDocs, doc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
@@ -368,39 +344,29 @@
       auth = getAuth(app);
     }
 
-    // STATE LOKAL
-    let currentUser = null; // { role: 'Admin' | 'Peserta', username: string }
+    let currentUser = null;
     let globalPemain = [];
     let globalJadwal = [];
 
-    // DATA DUMMY (HANYA AKTIF JIKA IS_PREVIEW = true)
     let dummyPemain = [], dummyJadwal = [];
     if (IS_PREVIEW) {
       document.getElementById('previewBanner').classList.remove('hidden');
       document.getElementById('demoLoginHint').classList.remove('hidden');
-      
-      // Buat hanya 2 data dummy pemain
       dummyPemain = [
         { id: 'P01', nama_asli: 'Budi (Dummy)', password: '123', sudah_diklaim: true },
         { id: 'P02', nama_asli: 'Pemain 02', password: '', sudah_diklaim: false }
       ];
-      // Buat hanya 2 data dummy jadwal
       dummyJadwal = [
-        { id: 'M01', putaran: 1, a1: 'P01', a2: 'P02', b1: 'P03', b2: 'P04', ag1: '', bg1: '', ag2: '', bg2: '' },
-        { id: 'M02', putaran: 1, a1: 'P05', a2: 'P06', b1: 'P07', b2: 'P08', ag1: '', bg1: '', ag2: '', bg2: '' }
+        { id: 'M01', putaran: 1, a1: 'P01', a2: 'P02', b1: 'P03', b2: 'P04', ag1: '', bg1: '', ag2: '', bg2: '' }
       ];
     }
 
-    // ==========================================
-    // 3. FUNGSI UI & UTILS
-    // ==========================================
     window.showLoader = (text = "MEMPROSES...") => { 
       document.getElementById('loaderText').innerText = text;
       document.getElementById('globalLoader').style.display = 'flex'; 
     };
     window.hideLoader = () => { document.getElementById('globalLoader').style.display = 'none'; };
     
-    let modalResolve = null;
     window.showModal = (title, message, isConfirm = false) => {
       return new Promise((resolve) => {
         document.getElementById('dialogTitle').innerText = title;
@@ -457,9 +423,6 @@
       });
     };
 
-    // ==========================================
-    // 4. LOGIKA LOTRE (PENDAFTARAN)
-    // ==========================================
     window.handleLottery = async () => {
       const name = document.getElementById('regName').value.trim();
       const pass = document.getElementById('regPass').value.trim();
@@ -472,14 +435,12 @@
           let avail = dummyPemain.filter(p => !p.sudah_diklaim);
           hideLoader();
           if(avail.length === 0) return showModal('Maaf', 'Semua 24 slot telah penuh terisi!');
-          // Ambil acak
           let slot = avail[Math.floor(Math.random() * avail.length)];
           slot.sudah_diklaim = true; slot.nama_asli = name; slot.password = pass;
           document.getElementById('regName').value = ''; document.getElementById('regPass').value = '';
           showTicket(name, slot.id, pass);
         }, 1000);
       } else {
-        // PRODUCTION FIREBASE - Cari slot kosong
         try {
           const snap = await getDocs(collection(db, "pemain"));
           let avail = [];
@@ -500,9 +461,6 @@
       }
     };
 
-    // ==========================================
-    // 5. LOGIKA LOGIN (HYBRID)
-    // ==========================================
     window.handleLogin = async () => {
       const user = document.getElementById('loginUser').value.trim();
       const pass = document.getElementById('loginPass').value.trim();
@@ -513,22 +471,17 @@
       if (IS_PREVIEW) {
         setTimeout(() => {
           hideLoader();
-          // Email valid untuk Admin di mode Uji Coba
           if(user === 'admin@lgp.com' && pass === '12345') proceedLogin('Admin', 'Panitia');
           else if(user === 'P01' && pass === '12345') proceedLogin('Peserta', 'P01');
           else showModal('Gagal', 'Username/Password salah!');
         }, 800);
       } else {
-        // PRODUCTION FIREBASE
         if(user.includes('@')) {
-          // Login Admin via Firebase Auth wajib pakai email
           try {
             await signInWithEmailAndPassword(auth, user, pass);
-            // onAuthStateChanged akan menangani UI
             hideLoader();
           } catch(e) { hideLoader(); showModal('Gagal', 'Email Admin atau Password salah!'); }
         } else {
-          // Login Peserta via Cek Koleksi Firestore
           try {
             const snap = await getDocs(collection(db, "pemain"));
             let found = false;
@@ -545,7 +498,6 @@
       }
     };
 
-    // Listener Auth khusus Admin (Production)
     if(!IS_PREVIEW) {
       onAuthStateChanged(auth, (user) => {
         if(user) proceedLogin('Admin', user.email);
@@ -575,9 +527,6 @@
       document.getElementById('loginUser').value = ''; document.getElementById('loginPass').value = '';
     };
 
-    // ==========================================
-    // 6. LOAD & RENDER DATA
-    // ==========================================
     window.loadData = async () => {
       showLoader("MEMUAT DATA...");
       if (IS_PREVIEW) {
@@ -597,11 +546,9 @@
           pSnap.forEach(d => globalPemain.push({id: d.id, ...d.data()}));
           jSnap.forEach(d => globalJadwal.push({id: d.id, ...d.data()}));
           
-          // Sort berdasar ID (P01, P02...) dan (M01, M02...)
           globalPemain.sort((a,b) => a.id.localeCompare(b.id));
           globalJadwal.sort((a,b) => a.id.localeCompare(b.id));
 
-          // Cek jika database kosong, munculkan tombol inisiasi khusus admin
           if(globalPemain.length === 0 && currentUser.role === 'Admin') {
             document.getElementById('btnInitDb').classList.remove('hidden');
             document.getElementById('gridPemain').innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Database Kosong! Silakan klik "Init DB" di atas.</div>';
@@ -674,7 +621,6 @@
       const g1a = document.getElementById(`ag1-${mId}`).value; const g1b = document.getElementById(`bg1-${mId}`).value;
       const g2a = document.getElementById(`ag2-${mId}`).value; const g2b = document.getElementById(`bg2-${mId}`).value;
       
-      // Validasi tanpa deuce
       const val = (a, b) => {
         if(a==='' && b==='') return true;
         let na=parseInt(a), nb=parseInt(b);
@@ -697,7 +643,7 @@
             ag1: g1a?parseInt(g1a):null, bg1: g1b?parseInt(g1b):null,
             ag2: g2a?parseInt(g2a):null, bg2: g2b?parseInt(g2b):null
           });
-          await loadData(); // Reload dari DB
+          await loadData();
         } catch(e) { hideLoader(); showModal('Error', 'Gagal menyimpan skor'); }
       }
     };
@@ -722,8 +668,6 @@
       const tb = document.getElementById('tblKlasemen'); tb.innerHTML = '';
       rnk.forEach((r, i) => {
         let cls = i===0 ? 'bg-yellow-100 font-bold' : (i===1 ? 'bg-gray-200 font-bold' : (i===2 ? 'bg-orange-100' : 'hover:bg-gray-50'));
-        
-        // PERBAIKAN: Kolom M dan P tidak lagi menggunakan 'hidden'
         tb.innerHTML += `
           <tr class="${cls} border-b">
             <td class="px-2 py-2 text-center text-gray-700">${i+1}</td>
@@ -737,9 +681,6 @@
       });
     }
 
-    // ==========================================
-    // 7. ADMIN TOOL: INIT DATABASE
-    // ==========================================
     window.initProdDatabase = async () => {
       if(IS_PREVIEW) return;
       let ok = await showModal('Inisialisasi', 'Buat struktur 24 Pemain dan 18 Laga kosong ke Firebase?', true);
@@ -748,12 +689,10 @@
       showLoader("MEMBUAT DATABASE...");
       try {
         const batch = writeBatch(db);
-        // Buat 24 Pemain
         for(let i=1; i<=24; i++) {
           let id = 'P'+String(i).padStart(2,'0');
           batch.set(doc(db, "pemain", id), { nama_asli: `Pemain ${String(i).padStart(2,'0')}`, password: '', sudah_diklaim: false });
         }
-        // Buat 18 Laga (Susunan paten)
         const jd = [
           ['M01',1,'P18','P13','P04','P20'],['M02',1,'P01','P21','P19','P08'],['M03',1,'P23','P03','P12','P24'],
           ['M04',1,'P17','P16','P06','P02'],['M05',1,'P10','P09','P22','P07'],['M06',1,'P05','P14','P15','P11'],
