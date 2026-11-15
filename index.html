@@ -37,16 +37,22 @@
     /* Ticket UI */
     #ticketCard { background: linear-gradient(135deg, #1a365d 0%, #2a5298 100%); color: white; border: 2px solid #d4af37; }
     .ticket-rip { border-bottom: 2px dashed rgba(212, 175, 55, 0.5); margin: 15px 0; }
+
+    /* Custom Scrollbar for a cleaner look */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #1a365d; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #d4af37; }
   </style>
 </head>
-<body class="text-gray-800">
+<body class="text-gray-800 pb-20 md:pb-0">
 
   <!-- PWA & MANIFEST SETUP -->
   <script>
     const manifestJSON = {
       "name": "Liga Grand Permata", "short_name": "LGP", "start_url": ".", "display": "standalone",
       "background_color": "#1a365d", "theme_color": "#1a365d",
-      "icons": [{"src": "https://imgur.com/a/YQxKb7T.png", "sizes": "512x512", "type": "image/png"}]
+      "icons": [{"src": "https://i.imgur.com/a9wdFpL.png", "sizes": "512x512", "type": "image/png"}]
     };
     const manifestBlob = new Blob([JSON.stringify(manifestJSON)], {type: 'application/json'});
     document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(manifestBlob)}">`);
@@ -76,7 +82,7 @@
   </script>
 
   <!-- BANNER INSTALL PWA -->
-  <div id="installBanner" style="display: none;" class="bg-gold text-navy p-3 font-bold justify-between items-center shadow-md z-[9999] relative">
+  <div id="installBanner" style="display: none;" class="bg-gold text-navy p-3 font-bold justify-between items-center shadow-md z-[9999] fixed top-0 w-full md:relative">
     <div class="flex items-center gap-3">
       <img src="https://i.imgur.com/a9wdFpL.png" class="w-10 h-10 rounded shadow">
       <span class="text-sm">Install Aplikasi LGP ke Layar Utama</span>
@@ -202,9 +208,11 @@
           <p class="text-xs text-gray-500">Masuk sebagai Peserta atau Admin</p>
         </div>
         <div id="demoLoginHint" class="hidden text-xs bg-blue-50 text-blue-800 p-2 rounded mb-4 border border-blue-200 text-center">
-          <b>Demo Mode:</b><br>Admin: admin / 12345<br>User: P01 / 12345
+          <b>Demo Mode:</b><br>Admin: admin@lgp.com / 12345<br>User: P01 / 12345
         </div>
-        <input type="text" id="loginUser" class="w-full p-3 border border-gray-300 rounded mb-3" placeholder="Username (P01) / Email Admin">
+        
+        <!-- PETUNJUK EMAIL DIUBAH AGAR LEBIH JELAS -->
+        <input type="text" id="loginUser" class="w-full p-3 border border-gray-300 rounded mb-3" placeholder="ID Peserta (P01) / Email Admin">
         <input type="password" id="loginPass" class="w-full p-3 border border-gray-300 rounded mb-6" placeholder="Password">
         <button onclick="handleLogin()" class="w-full bg-navy text-gold font-bold py-3 rounded-lg shadow hover:bg-opacity-90 transition">LOGIN</button>
       </div>
@@ -255,12 +263,14 @@
               <table class="w-full text-sm text-left">
                 <thead class="bg-navy text-white text-xs uppercase tracking-wider">
                   <tr>
-                    <th class="px-3 py-3 text-center w-12">Rnk</th>
-                    <th class="px-3 py-3">Pemain</th>
-                    <th class="px-2 py-3 text-center">Main</th>
-                    <th class="px-2 py-3 text-center" title="Selisih">+/-</th>
-                    <th class="px-2 py-3 text-center hidden sm:table-cell" title="Menang">M</th>
-                    <th class="px-2 py-3 text-center hidden sm:table-cell" title="Poin">P</th>
+                    <th class="px-2 py-3 text-center w-10">Rnk</th>
+                    <th class="px-2 py-3">Pemain</th>
+                    <th class="px-1 py-3 text-center w-12">Main</th>
+                    <th class="px-1 py-3 text-center w-12" title="Selisih">+/-</th>
+                    
+                    <!-- M (Menang) dan P (Poin) sekarang selalu tampil -->
+                    <th class="px-1 py-3 text-center w-10" title="Menang">M</th>
+                    <th class="px-1 py-3 text-center w-10" title="Poin">P</th>
                   </tr>
                 </thead>
                 <tbody id="tblKlasemen" class="divide-y divide-gray-200"></tbody>
@@ -503,19 +513,20 @@
       if (IS_PREVIEW) {
         setTimeout(() => {
           hideLoader();
-          if(user === 'admin' && pass === '12345') proceedLogin('Admin', 'Panitia');
+          // Email valid untuk Admin di mode Uji Coba
+          if(user === 'admin@lgp.com' && pass === '12345') proceedLogin('Admin', 'Panitia');
           else if(user === 'P01' && pass === '12345') proceedLogin('Peserta', 'P01');
           else showModal('Gagal', 'Username/Password salah!');
         }, 800);
       } else {
         // PRODUCTION FIREBASE
         if(user.includes('@')) {
-          // Login Admin via Firebase Auth
+          // Login Admin via Firebase Auth wajib pakai email
           try {
             await signInWithEmailAndPassword(auth, user, pass);
             // onAuthStateChanged akan menangani UI
             hideLoader();
-          } catch(e) { hideLoader(); showModal('Gagal', 'Email/Password Admin salah!'); }
+          } catch(e) { hideLoader(); showModal('Gagal', 'Email Admin atau Password salah!'); }
         } else {
           // Login Peserta via Cek Koleksi Firestore
           try {
@@ -711,14 +722,16 @@
       const tb = document.getElementById('tblKlasemen'); tb.innerHTML = '';
       rnk.forEach((r, i) => {
         let cls = i===0 ? 'bg-yellow-100 font-bold' : (i===1 ? 'bg-gray-200 font-bold' : (i===2 ? 'bg-orange-100' : 'hover:bg-gray-50'));
+        
+        // PERBAIKAN: Kolom M dan P tidak lagi menggunakan 'hidden'
         tb.innerHTML += `
           <tr class="${cls} border-b">
-            <td class="px-3 py-2 text-center text-gray-700">${i+1}</td>
-            <td class="px-3 py-2 font-semibold truncate max-w-[120px]">${r.nama}</td>
-            <td class="px-2 py-2 text-center">${r.main}</td>
-            <td class="px-2 py-2 text-center font-bold ${r.selisih>0?'text-green-600':(r.selisih<0?'text-red-600':'')}">${r.selisih>0?'+'+r.selisih:r.selisih}</td>
-            <td class="px-2 py-2 text-center hidden sm:table-cell">${r.menang}</td>
-            <td class="px-2 py-2 text-center hidden sm:table-cell">${r.poin}</td>
+            <td class="px-2 py-2 text-center text-gray-700">${i+1}</td>
+            <td class="px-2 py-2 font-semibold truncate max-w-[100px] sm:max-w-[150px]">${r.nama}</td>
+            <td class="px-1 py-2 text-center">${r.main}</td>
+            <td class="px-1 py-2 text-center font-bold ${r.selisih>0?'text-green-600':(r.selisih<0?'text-red-600':'')}">${r.selisih>0?'+'+r.selisih:r.selisih}</td>
+            <td class="px-1 py-2 text-center text-gray-600 font-semibold">${r.menang}</td>
+            <td class="px-1 py-2 text-center text-gray-600 font-semibold">${r.poin}</td>
           </tr>
         `;
       });
